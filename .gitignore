@@ -6,7 +6,6 @@
 /var/
 /vendor/
 /public/images/
-/src/DataFixtures/images/
 ###< symfony/framework-bundle ###
 
 ###> symfony/web-server-bundle ###

@@ -7,6 +7,7 @@ use App\Form\ArticleFormType;
 use App\Repository\ArticleRepository;
 use App\Service\UploaderHelper;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Gedmo\Sluggable\Util\Urlizer;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -25,6 +26,7 @@ class ArticleAdminController extends BaseController
      * @param Request $request
      * @param UploaderHelper $uploaderHelper
      * @return RedirectResponse|Response
+     * @throws Exception
      */
     public function new(EntityManagerInterface $em, Request $request, UploaderHelper $uploaderHelper)
     {
@@ -39,8 +41,7 @@ class ArticleAdminController extends BaseController
             $uploadedFile = $form['imageFile']->getData();
 
             if ($uploadedFile){
-
-                $newFilename = $uploaderHelper->uploadArticleImage($uploadedFile);
+                $newFilename = $uploaderHelper->uploadArticleImage($uploadedFile, $article->getImageFilename());
                 $article->setImageFilename($newFilename);
             }
 
@@ -65,6 +66,7 @@ class ArticleAdminController extends BaseController
      * @param EntityManagerInterface $em
      * @param UploaderHelper $uploaderHelper
      * @return RedirectResponse|Response
+     * @throws Exception
      */
     public function edit(Article $article, Request $request, EntityManagerInterface $em, UploaderHelper $uploaderHelper)
     {
@@ -78,8 +80,7 @@ class ArticleAdminController extends BaseController
             $uploadedFile = $form['imageFile']->getData();
 
             if ($uploadedFile){
-
-                $newFilename = $uploaderHelper->uploadArticleImage($uploadedFile);
+                $newFilename = $uploaderHelper->uploadArticleImage($uploadedFile, $article->getImageFilename());
                 $article->setImageFilename($newFilename);
             }
 
@@ -98,23 +99,6 @@ class ArticleAdminController extends BaseController
         ]);
     }
 
-    /**
-     * @Route("/admin/upload/test", name="upload_test")
-     * @param Request $request
-     */
-    public function temporalyUploadAction(Request $request)
-    {
-        /** @var UploadedFile $uploadedFile */
-       $uploadedFile = $request->files->get('image');
-       $destination = $this->getParameter('kernel.project_dir').'/public/uploads';
-       $originalFilename = pathinfo( $uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
-       $newFilename = Urlizer::urlize($originalFilename).'-'.uniqid().'-'. $uploadedFile->guessExtension();
-
-       $uploadedFile->move(
-           $destination,
-           $newFilename
-       );
-    }
 
     /**
      * @Route("/admin/article/location-select", name="admin_article_location_select")

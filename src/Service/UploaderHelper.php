@@ -4,7 +4,11 @@
 namespace App\Service;
 
 use Gedmo\Sluggable\Util\Urlizer;
+use League\Flysystem\FileNotFoundException;
+use League\Flysystem\FilesystemInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Asset\Context\RequestStackContext;
+use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class UploaderHelper
@@ -14,26 +18,54 @@ class UploaderHelper
     /**
      * @var string
      */
-    private $uploadsPath;
+    private $filesystem;
 
     private $requestStackContext;
 
-    public function __construct(string $uploadsPath, RequestStackContext $requestStackContext)
+    private $logger;
+
+    public function __construct(FilesystemInterface $publicUploadsFilesystem, RequestStackContext $requestStackContext, LoggerInterface $logger)
     {
-        $this->uploadsPath = $uploadsPath;
+        $this->filesystem = $publicUploadsFilesystem;
         $this->requestStackContext = $requestStackContext;
+        $this->logger = $logger;
     }
 
-    public function uploadArticleImage(UploadedFile $uploadedFile): string
+    public function uploadArticleImage(File $file, ?string $existingFilename): string
     {
-        $destination = $this->uploadsPath.'/'.self::ARTICLE_IMAGE;
-        $originalFilename = pathinfo( $uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
-        $newFilename = Urlizer::urlize($originalFilename).'-'.uniqid().'-'. $uploadedFile->guessExtension();
+        if ($file instanceof UploadedFile) {
+            $originalFilename = $file->getClientOriginalName();
+        } else {
+            $originalFilename = $file->getFilename();
+        }
 
-        $uploadedFile->move(
-            $destination,
-            $newFilename
+        $newFilename = Urlizer::urlize(pathinfo($originalFilename, PATHINFO_FILENAME)).'-'.uniqid().'.'.$file->guessExtension();
+
+        $stream = fopen($file->getPathname(), 'r');
+        $result = $this->filesystem->writeStream(
+            self::ARTICLE_IMAGE.'/'.$newFilename,
+            $stream
         );
+
+        if ($result === false) {
+            throw new \Exception(sprintf('Could not write uploaded file "%s"', $newFilename));
+        }
+
+        if (is_resource($stream)) {
+            fclose($stream);
+        }
+
+        if ($existingFilename) {
+            try {
+                $result = $this->filesystem->delete(self::ARTICLE_IMAGE . '/' . $existingFilename);
+
+                if ($result === false) {
+                    throw new \Exception(sprintf('Could not delete old uploaded file "%s"', $existingFilename));
+                }
+            } catch (FileNotFoundException $e) {
+                $this->logger->alert(sprintf('Old uploaded file "%s" was missing when trying to delete', $existingFilename));
+            }
+        }
 
         return  $newFilename;
     }
