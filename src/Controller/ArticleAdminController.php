@@ -5,9 +5,12 @@ namespace App\Controller;
 use App\Entity\Article;
 use App\Form\ArticleFormType;
 use App\Repository\ArticleRepository;
+use App\Service\UploaderHelper;
 use Doctrine\ORM\EntityManagerInterface;
+use Gedmo\Sluggable\Util\Urlizer;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,8 +21,12 @@ class ArticleAdminController extends BaseController
     /**
      * @Route("/admin/article/new", name="admin_article_new")
      * @IsGranted("ROLE_ADMIN_ARTICLE")
+     * @param EntityManagerInterface $em
+     * @param Request $request
+     * @param UploaderHelper $uploaderHelper
+     * @return RedirectResponse|Response
      */
-    public function new(EntityManagerInterface $em, Request $request)
+    public function new(EntityManagerInterface $em, Request $request, UploaderHelper $uploaderHelper)
     {
         $form = $this->createForm(ArticleFormType::class);
 
@@ -27,6 +34,15 @@ class ArticleAdminController extends BaseController
         if ($form->isSubmitted() && $form->isValid()) {
             /** @var Article $article */
             $article = $form->getData();
+
+            /** @var UploadedFile $uploadedFile */
+            $uploadedFile = $form['imageFile']->getData();
+
+            if ($uploadedFile){
+
+                $newFilename = $uploaderHelper->uploadArticleImage($uploadedFile);
+                $article->setImageFilename($newFilename);
+            }
 
             $em->persist($article);
             $em->flush();
@@ -47,9 +63,10 @@ class ArticleAdminController extends BaseController
      * @param Article $article
      * @param Request $request
      * @param EntityManagerInterface $em
+     * @param UploaderHelper $uploaderHelper
      * @return RedirectResponse|Response
      */
-    public function edit(Article $article, Request $request, EntityManagerInterface $em)
+    public function edit(Article $article, Request $request, EntityManagerInterface $em, UploaderHelper $uploaderHelper)
     {
         $form = $this->createForm(ArticleFormType::class, $article, [
             'include_published_at' => true
@@ -57,6 +74,15 @@ class ArticleAdminController extends BaseController
 
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
+            /** @var UploadedFile $uploadedFile */
+            $uploadedFile = $form['imageFile']->getData();
+
+            if ($uploadedFile){
+
+                $newFilename = $uploaderHelper->uploadArticleImage($uploadedFile);
+                $article->setImageFilename($newFilename);
+            }
+
             $em->persist($article);
             $em->flush();
 
@@ -70,6 +96,24 @@ class ArticleAdminController extends BaseController
         return $this->render('article_admin/edit.html.twig', [
             'articleForm' => $form->createView()
         ]);
+    }
+
+    /**
+     * @Route("/admin/upload/test", name="upload_test")
+     * @param Request $request
+     */
+    public function temporalyUploadAction(Request $request)
+    {
+        /** @var UploadedFile $uploadedFile */
+       $uploadedFile = $request->files->get('image');
+       $destination = $this->getParameter('kernel.project_dir').'/public/uploads';
+       $originalFilename = pathinfo( $uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
+       $newFilename = Urlizer::urlize($originalFilename).'-'.uniqid().'-'. $uploadedFile->guessExtension();
+
+       $uploadedFile->move(
+           $destination,
+           $newFilename
+       );
     }
 
     /**

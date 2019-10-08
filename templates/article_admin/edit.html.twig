@@ -2,7 +2,11 @@
 
 {% block content_body %}
     <h1>Edit the Article! 🚀</h1>
-
+   {# <form method="post" action="{{ path('upload_test') }}" enctype="multipart/form-data">
+        <input type="file" name="image">
+        <button type="submit" class="btn btn_primary">Upload</button>
+    </form>
+    <hr>#}
     {{ include('article_admin/_form.html.twig', {
         button_text: 'Update!'
     }) }}

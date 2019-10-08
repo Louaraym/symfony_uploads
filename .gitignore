@@ -6,6 +6,7 @@
 /var/
 /vendor/
 /public/images/
+/src/DataFixtures/images/
 ###< symfony/framework-bundle ###
 
 ###> symfony/web-server-bundle ###
@@ -16,3 +17,8 @@
 .phpunit
 /phpunit.xml
 ###< symfony/phpunit-bridge ###
+/public/uploads
+
+###> liip/imagine-bundle ###
+/public/media/cache/
+###< liip/imagine-bundle ###
