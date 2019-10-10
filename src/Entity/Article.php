@@ -6,7 +6,6 @@ use App\Repository\CommentRepository;
 use App\Service\UploaderHelper;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use Doctrine\Common\Collections\Criteria;
 use Doctrine\ORM\Mapping as ORM;
 use Gedmo\Mapping\Annotation as Gedmo;
 use Gedmo\Timestampable\Traits\TimestampableEntity;
@@ -87,10 +86,16 @@ class Article
      */
     private $specificLocationName;
 
+    /**
+     * @ORM\OneToMany(targetEntity="App\Entity\ArticleReference", mappedBy="article")
+     */
+    private $articleReferences;
+
     public function __construct()
     {
         $this->comments = new ArrayCollection();
         $this->tags = new ArrayCollection();
+        $this->articleReferences = new ArrayCollection();
     }
 
     public function getId()
@@ -166,7 +171,7 @@ class Article
 
     public function incrementHeartCount(): self
     {
-        $this->heartCount = $this->heartCount + 1;
+        ++$this->heartCount;
 
         return $this;
     }
@@ -269,8 +274,10 @@ class Article
 
     /**
      * @Assert\Callback
+     * @param ExecutionContextInterface $context
+     * @param $payload
      */
-    public function validate(ExecutionContextInterface $context, $payload)
+    public function validate(ExecutionContextInterface $context, $payload): void
     {
         if (stripos($this->getTitle(), 'the borg') !== false) {
             $context->buildViolation('Um.. the Bork kinda makes us nervous')
@@ -306,4 +313,13 @@ class Article
 
         return $this;
     }
+
+    /**
+     * @return Collection|ArticleReference[]
+     */
+    public function getArticleReferences(): Collection
+    {
+        return $this->articleReferences;
+    }
+
 }
