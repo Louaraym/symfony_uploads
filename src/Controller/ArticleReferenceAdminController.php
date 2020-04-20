@@ -5,13 +5,15 @@ namespace App\Controller;
 use App\Entity\Article;
 use App\Entity\ArticleReference;
 use App\Service\UploaderHelper;
+use Aws\S3\S3Client;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\Validator\Constraints\File;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
@@ -136,28 +138,29 @@ class ArticleReferenceAdminController extends AbstractController
     /**
      * @Route("/admin/article/references/{id}/download", name="admin_article_download_reference", methods={"GET"})
      * @param ArticleReference $reference
-     * @param UploaderHelper $uploaderHelper
-     * @return StreamedResponse
+     * @param S3Client $s3Client
+     * @param string $s3BucketName
+     * @return RedirectResponse
      */
-    public function downloadArticleReference(ArticleReference $reference, UploaderHelper $uploaderHelper): StreamedResponse
+    public function downloadArticleReference(ArticleReference $reference, S3Client $s3Client, string $s3BucketName): RedirectResponse
     {
         $article = $reference->getArticle();
         $this->denyAccessUnlessGranted('MANAGE', $article);
-        $response = new StreamedResponse(function() use ($reference, $uploaderHelper) {
-            $outputStream = fopen('php://output', 'wb');
-            $fileStream = $uploaderHelper->readStream($reference->getFilePath(), false);
-            stream_copy_to_stream($fileStream, $outputStream);
-        });
-
-        $response->headers->set('Content-Type', $reference->getMimeType());
 
         $disposition = HeaderUtils::makeDisposition(
-            HeaderUtils::DISPOSITION_ATTACHMENT,
+            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
             $reference->getOriginalFilename()
         );
-        $response->headers->set('Content-Disposition', $disposition);
 
-        return $response;
+        $command = $s3Client->getCommand('GetObject', [
+            'Bucket' => $s3BucketName,
+            'Key' => $reference->getFilePath(),
+            'ResponseContentType' => $reference->getMimeType(),
+            'ResponseContentDisposition' => $disposition,
+        ]);
+
+        $request = $s3Client->createPresignedRequest($command, '+30 minutes');
+        return new RedirectResponse((string) $request->getUri());
     }
 
     /**
@@ -174,7 +177,7 @@ class ArticleReferenceAdminController extends AbstractController
         $this->denyAccessUnlessGranted('MANAGE', $article);
         $entityManager->remove($reference);
         $entityManager->flush();
-        $uploaderHelper->deleteFile($reference->getFilePath(), false);
+        $uploaderHelper->deleteFile($reference->getFilePath());
         return new Response(null, 204);
     }
 

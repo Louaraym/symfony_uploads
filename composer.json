@@ -4,9 +4,13 @@
     "require": {
         "php": "^7.1.3",
         "ext-iconv": "*",
+        "ext-json": "*",
+        "aws/aws-sdk-php": "^3.122",
         "knplabs/knp-markdown-bundle": "^1.7",
         "knplabs/knp-paginator-bundle": "^2.7",
         "knplabs/knp-time-bundle": "^1.8",
+        "league/flysystem-aws-s3-v3": "^1.0",
+        "league/flysystem-cached-adapter": "^1.0",
         "liip/imagine-bundle": "^2.2",
         "nexylan/slack-bundle": "^2.0",
         "oneup/flysystem-bundle": "^3.1",
@@ -25,8 +29,7 @@
         "symfony/validator": "^4.0",
         "symfony/web-server-bundle": "^4.0",
         "symfony/yaml": "^4.0",
-        "twig/extensions": "^1.5",
-      "ext-json": "*"
+        "twig/extensions": "^1.5"
     },
     "require-dev": {
         "doctrine/doctrine-fixtures-bundle": "^3.0",

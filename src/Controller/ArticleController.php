@@ -7,6 +7,7 @@ use App\Repository\ArticleRepository;
 use App\Service\SlackClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -25,8 +26,10 @@ class ArticleController extends AbstractController
 
     /**
      * @Route("/", name="app_homepage")
+     * @param ArticleRepository $repository
+     * @return Response
      */
-    public function homepage(ArticleRepository $repository)
+    public function homepage(ArticleRepository $repository): Response
     {
         $articles = $repository->findAllPublishedOrderedByNewest();
 
@@ -37,8 +40,11 @@ class ArticleController extends AbstractController
 
     /**
      * @Route("/news/{slug}", name="article_show")
+     * @param Article $article
+     * @param SlackClient $slack
+     * @return Response
      */
-    public function show(Article $article, SlackClient $slack)
+    public function show(Article $article, SlackClient $slack): Response
     {
         if ($article->getSlug() === 'khaaaaaan') {
             $slack->sendMessage('Kahn', 'Ah, Kirk, my old friend...');
@@ -51,8 +57,12 @@ class ArticleController extends AbstractController
 
     /**
      * @Route("/news/{slug}/heart", name="article_toggle_heart", methods={"POST"})
+     * @param Article $article
+     * @param LoggerInterface $logger
+     * @param EntityManagerInterface $em
+     * @return JsonResponse
      */
-    public function toggleArticleHeart(Article $article, LoggerInterface $logger, EntityManagerInterface $em)
+    public function toggleArticleHeart(Article $article, LoggerInterface $logger, EntityManagerInterface $em): JsonResponse
     {
         $article->incrementHeartCount();
         $em->flush();
